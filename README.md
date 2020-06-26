@@ -9,3 +9,4 @@ Inspired by [this R package](https://github.com/rcannood/princurve), prinPy is a
 ### Future:
 1. Currently, only simple curves are supported. For example, x must be strictly increasing. I would like to change this eventually.
 2. Move to C++. Right now it is completely written in Python with a lot of support from sciPy. I hope to use C++ to speed up calculations.
+3. Onced moved to C++, higher dimensional curves will be included as well.
