@@ -3,7 +3,7 @@
 Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brings principal curves to Python. 
 
 ### What prinPy does
-Currently, prinPy has implemented two algorithms from [this paper](https://www.sciencedirect.com/science/article/pii/S0377042715005956). As of now, these only work in 2-dimensional space. 
+Currently, prinPy has implemented two local ("bottom-up") algorithms from [this paper](https://www.sciencedirect.com/science/article/pii/S0377042715005956). As of now, these only work in 2-dimensional space. 
 
 1. CLPC-g (Greedy Constraint Local Principal Curve)
 2. CLPC-s (One-Dimensional Constraint Local Principal Curve)
@@ -17,7 +17,7 @@ A principal curve, simply put, is a smooth line that passes through the middle o
 View the quickstart notebook [here](). Docs will be coming soon!
 
 ## Future:
-1. Add more PC algorithms, and expand to 3-dimensions+
+1. Add global algorithms, and expand to 3-dimensions+
 2. Move some code to C++
 
 ## References
