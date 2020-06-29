@@ -10,10 +10,14 @@ Currently, prinPy has implemented two algorithms from [this paper](https://www.s
 
 CLPC-g, as the name implies, is a greedy algorithm and will be faster. This is fine for simpler curves. CLPS-s has the potential to be much more accurate at the expense of speed for more difficult curves. After fitting a curve, prinPy has the ability to project to the curve.
 
+### Quick-Start
+View the quickstart notebook [here](). Docs will be coming soon!
+
 ### Future:
 1. Add more PC algorithms, and expand to 3-dimensions+
 2. Move some code to C++
 
+### Referebces
 \[1\] Dewang Chen, Jiateng Yin, Shiying Yang, Lingxi Li, Peter Pudney,
 Constraint local principal curve: Concept, algorithms and applications,
 Journal of Computational and Applied Mathematics,
