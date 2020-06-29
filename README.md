@@ -20,7 +20,7 @@ View the quickstart notebook [here](). Docs will be coming soon!
 1. Add more PC algorithms, and expand to 3-dimensions+
 2. Move some code to C++
 
-## Referebces
+## References
 \[1\] Dewang Chen, Jiateng Yin, Shiying Yang, Lingxi Li, Peter Pudney,
 Constraint local principal curve: Concept, algorithms and applications,
 Journal of Computational and Applied Mathematics,
