@@ -14,7 +14,7 @@ CLPC-g will be faster and is fine for simpler curves. CLPS-s has the potential t
 A principal curve, simply put, is a smooth line that passes through the middle of a dataset. It then is a one-dimensional summary of a data.
 
 ## Quick-Start
-View the quickstart notebook [here](). Docs will be coming soon!
+View the quickstart notebook [here](https://github.com/artusoma/prinPy/blob/master/prinPy%20quickstart.ipynb). Docs will be coming soon!
 
 ## Future:
 1. Add global algorithms, and expand to 3-dimensions+
