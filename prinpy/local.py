@@ -201,6 +201,15 @@ def error_line(theta, c, r1):
     p2 = np.array([c[0]+r1*np.cos(theta), c[1]+r1*np.sin(theta)])
     return p2
 
+def point_dist(pts, v1, v2):
+    '''
+    Tells CLPCS if it should invert direction of best fit line
+    v1: vertex j
+    v2: vertex j+1
+    '''
+    D1 = np.linalg.norm(v2 - pts, axis = 1)
+    return sum(D1)/len(D1)
+
 class CLPCS:
     def __init__(self):
         fit_points = []
@@ -219,18 +228,30 @@ class CLPCS:
         '''
         # Combine x,y and sort
         data = np.concatenate([x.reshape(-1,1), y.reshape(-1,1)], axis = 1)
-        data = data[data[:,0].argsort()]
 
         points = []      # points of principal curve
         points.append(data[0,:])     # Append first point
         pe = data[-1,:] # end point
 
-        nc = True
-        while nc:
+        while 1:
             pt_found = False
 
             # Start drawing circle
             rt = 2 * np.linalg.norm(pe - points[-1]) # upper bound
+
+            # First, attempt to connect to end point.
+            # Connecting to the end point with acceptable ei is the 
+            # termination condition.
+            rend = np.linalg.norm(pe - points[-1])
+            in_c = points_in(data, rend, points[-1]) #get pts inside circle
+            try:
+                e_end = distg(in_c, points[-1], pe) # calculate error to end pt
+            except ZeroDivisionError: # successfully terminates, weird case
+                break
+
+            if e_end <= e_max:
+                points.append(pe)
+                break
 
             while not pt_found:
                 ri = rl + (rt - rl)/2
@@ -252,17 +273,22 @@ class CLPCS:
                         ).x
                     p2 = error_line(theta, points[-1], ri) 
                     e_i = distg(in_c, points[-1], p2) # calculate error
-                
+                    p_error = point_dist(in_c, points[-1], p2)
+
+                    # Try to invert p2 and check error. This is because
+                    # the optimzation alg can fail to account for the fact
+                    # that p2 could be closer to points than drawing other dir
+                    theta_inv = np.pi + theta
+                    p2_inv = error_line(theta_inv, points[-1], ri)
+                    p_error_inv = point_dist(in_c, points[-1], p2_inv)
+
+                    if p_error_inv < p_error: p2 = p2_inv
+
                 if e_i >= e_max:
                     rt = ri
                 else:
                     data = points_out(data, ri, points[-1])
                     points.append(p2)
-
-                    # Check if all points have been calculated
-                    if data.shape[0] == 0:
-                        nc = False
-                        break
 
                     pt_found = True
             
@@ -271,7 +297,7 @@ class CLPCS:
         res = np.concatenate([res_x.reshape(-1,1), res_y.reshape(-1,1)], axis = 1)
         return res
 
-    def calc_pc(self, x, y, e_max = .2, rl = 0):
+    def fit(self, x, y, e_max = .2, rl = 0):
         '''
         Calculates principal curve ticks
         Args: same as fit_points
