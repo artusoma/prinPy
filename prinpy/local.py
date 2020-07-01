@@ -62,7 +62,7 @@ class CLPCG:
         fit_points = []
         spline_ticks = None
     
-    def fit_points(self, x, y, e_max = .2, fmin_error = False):
+    def points(self, x, y, e_max = .2, fmin_error = False):
         '''
         Implements CLPC-greedy algorithm
         Args:
@@ -146,7 +146,7 @@ class CLPCG:
         Args: same as fit_points
         Returns: None
         '''
-        res = self.fit_points(x, y, e_max, fmin_error)
+        res = self.points(x, y, e_max, fmin_error)
         tck, u = scipy.interpolate.splprep(res.T, s = 0)
         self.spline_ticks = tck
         return
@@ -215,7 +215,7 @@ class CLPCS:
         fit_points = []
         spline_ticks = None
     
-    def fit_points(self, x, y, e_max = .2, rl = 0):
+    def points(self, x, y, e_max = .2, rl = 0):
         '''
         Implements CLPC one dimensional search algorithm
         Args:
@@ -303,7 +303,7 @@ class CLPCS:
         Args: same as fit_points
         Returns: None
         '''
-        res = self.fit_points(x, y, e_max, rl)
+        res = self.points(x, y, e_max, rl)
         tck, u = scipy.interpolate.splprep(res.T, s = 0)
         self.spline_ticks = tck
         return
