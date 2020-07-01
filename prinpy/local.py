@@ -4,6 +4,12 @@ import matplotlib.pyplot as plt
 import scipy.optimize as op
 import scipy.interpolate
 
+'''
+These are local algorithms. These work on a per-step basis. Starting
+at one point, the algorithm attempts to choose the next best point, 
+and so on until the end is reached.
+'''
+
 def distg(pts, v1, v2):
     '''
     Returns the minimum of points from line and points from vertex
@@ -44,6 +50,10 @@ def reset(x,y):
     return dat, [dat[0,:]]
 
 def proj_min(X, tck, pt):
+    '''
+    Finds the distance X along the PC where pt has the shortest
+    projection distance. 
+    '''
     loc_ = scipy.interpolate.splev(X, tck)
     return np.linalg.norm(loc_ - pt)
 
