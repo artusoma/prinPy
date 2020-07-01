@@ -6,7 +6,7 @@ Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brin
 Currently, prinPy has implemented two local ("bottom-up") algorithms from [this paper](https://www.sciencedirect.com/science/article/pii/S0377042715005956). As of now, these only work in 2-dimensional space. 
 
 1. CLPC-g (Greedy Constraint Local Principal Curve)
-2. CLPC-s (One-Dimensional Constraint Local Principal Curve)
+2. CLPC-s (One-Dimensional Search Constraint Local Principal Curve)
 
 CLPC-g, as the name implies, is a greedy algorithm and will be faster. This is fine for simpler curves. CLPS-s has the potential to be much more accurate at the expense of speed for more difficult curves. After fitting a curve, prinPy has the ability to project to the curve.
 
