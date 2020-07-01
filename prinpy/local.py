@@ -41,7 +41,6 @@ def points_btw(pts, r1, r2, p):
 
 def reset(x,y):
     dat = np.concatenate([x.reshape(-1,1), y.reshape(-1,1)], axis = 1)
-    dat = dat[dat[:,0].argsort()]
     return dat, [dat[0,:]]
 
 def proj_min(X, tck, pt):
@@ -61,79 +60,77 @@ class CLPCG:
             y: y-data
             e_max: Max allowed error. If not met, another point P will be added
                 to the curve. Authors suggest 1/4 to 1/2 of measurement error
-            fmin_error: If true, will find appox. the min value of e_max for the 
-                        algorithm to run. e_max must be greater than 0 but
-                        less than the min value
         Returns:   
             points: collection of points that construct the straight line
                     segments
         '''
          # Combine x,y and sort
         data = np.concatenate([x.reshape(-1,1), y.reshape(-1,1)], axis = 1)
-        data = data[data[:,0].argsort()]
 
         points = []      # points of principal curve
         points.append(data[0,:])     # Append first point
         pe = data[-1,:] # end point
 
-        nc = True
-        while nc:
-            pt_found = False
+        while 1:
+            pt_found = False 
 
             # Start drawing circle
             rl = 0 # lower radius bound
             rt = 2 * np.linalg.norm(pe - points[-1]) # upper bound
 
-            while not pt_found:
+            # First, attempt to connect to end point.
+            # Connecting to the end point with acceptable ei is the 
+            # termination condition.
+            rend = np.linalg.norm(pe - points[-1])
+            in_c = points_in(data, rend, points[-1]) #get pts inside circle
+            try:
+                e_end = distg(in_c, points[-1], pe) # calculate error to end pt
+            except ZeroDivisionError: # successfully terminates, weird case
+                break
+
+            if e_end <= e_max:
+                points.append(pe)
+                break
+
+            while not pt_found: # point with acceptable error not found
+                # begin draw circle with radius ri
                 ri = rl + (rt - rl)/2
 
-                # Get points inside circle
-                in_c = points_in(data, ri, points[-1])
-
-                # calculate pi+1 (p2)
-                # Construct inner radius
-                rj = ri * .9
-
-                btw_c = points_btw(data, rj, ri, points[-1]) #get pts in circle
-
+                in_c = points_in(data, ri, points[-1]) #get pts inside circle
+                rj = ri * .9    # Construct inner radius
+                btw_c = points_btw(data, rj, ri, points[-1]) #get pts btw circle
                 
-                if btw_c.shape[0] == 0:  # No points are in circle
-                    if fmin_error:      # reset error limit
-                        e_max = e_max / .99
-                        data, points = reset(x,y)
-                        break
-                    else:
-                        raise ValueError("e_max = %f is too small. Choose a " \
-                                        "smaller e_max, or set fmin_error = " \
-                                        "True ." % e_max)   
+                if btw_c.shape[0] == 0:  # No points s.t. rj > ||p|| > ri
+                    raise ValueError("e_max = %f is too small. Choose a " \
+                                     "larger e_max." % e_max)   
                 else:
                     # candidate point is mean of points in circle sector
                     p2 = np.array([np.mean(btw_c[:,0]), np.mean(btw_c[:,1])])
                     e_i = distg(in_c, points[-1], p2) # calculate error
 
-                if e_i >= e_max:
+                if e_i > e_max:  # if error not acceptable, reduce size of rt
                     rt = ri
-                else:
+
+                # If error is acceptable, add p2 to points
+                else:       
                     data = points_out(data, ri, points[-1])
                     points.append(p2)
-
-                    # Check if all points have been calculated
-                    if data.shape[0] == 0:
-                        nc = False
-                        break
-
                     pt_found = True
-        
-        if fmin_error:
-            print('Min e_max = %f' % e_max)
 
+        # transform points into an array
         res_x = np.array([p[0] for p in points])
         res_y = np.array([p[1] for p in points])
         res = np.concatenate([res_x.reshape(-1,1), res_y.reshape(-1,1)], axis = 1)
+
+        if res.shape[0] <= 3:
+            raise ValueError("Not enough points generated: Spline degre 3 with" \
+                              " %d points generated. Try reducing e_max" \
+                             % (res.shape[0]))
+
         self.fit_points = res
         return res
 
-    def calc_pc(self, x, y, e_max = .2, fmin_error = False):
+    def fit(self, x, y, e_max = .2, fmin_error = False):
         '''
         Calculates principal curve ticks
         Args: same as fit_points
