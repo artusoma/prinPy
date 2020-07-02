@@ -1,0 +1,6 @@
+#checkpoints
+.ipynb_checkpoints/
+__pycache__/
+build/
+dist/
+prinpy.egg-info/
