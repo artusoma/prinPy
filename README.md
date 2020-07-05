@@ -12,10 +12,10 @@ PrinPy has two local and one global algorithm.
 
 CLPC-g will be faster and is fine for simpler curves. CLPS-s has the potential to be much more accurate at the expense of speed for more difficult curves. After fitting a curve, prinPy has the ability to project to the curve.
 
-**Global**
+**Global** <br>
 The sole global algorithm is not necessarily a principal curve, but a nonlinear principal component analysis. However, a PC and NLPCA end up doing the same thing. The global algorithm, called NLPCA, is a neural network implementation.<sup>2</sup>
 
-**Which one should I use?**
+**Which one should I use?** <br>
 The local algorithms will be better for tightly bunched data, such as digit recogniition or GPS data. The global algorithm is better suited for "clouds" of data or sparsely represented data.
 
 
