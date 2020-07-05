@@ -4,15 +4,23 @@ Installation: `pip install prinpy`
 Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brings principal curves to Python. 
 
 ### What prinPy does
-Currently, prinPy has implemented two local ("bottom-up") algorithms from [this paper](https://www.sciencedirect.com/science/article/pii/S0377042715005956). As of now, these only work in 2-dimensional space. 
+PrinPy has two local and one global algorithm.
 
-1. CLPC-g (Greedy Constraint Local Principal Curve)
-2. CLPC-s (One-Dimensional Search Constraint Local Principal Curve)
+**Local**
+1. CLPC-g (Greedy Constraint Local Principal Curve)<sup>1</sup>
+2. CLPC-s (One-Dimensional Search Constraint Local Principal Curve)<sup>1</sup>
 
 CLPC-g will be faster and is fine for simpler curves. CLPS-s has the potential to be much more accurate at the expense of speed for more difficult curves. After fitting a curve, prinPy has the ability to project to the curve.
 
+**Global**
+The sole global algorithm is not necessarily a principal curve, but a nonlinear principal component analysis. However, a PC and NLPCA end up doing the same thing. The global algorithm, called NLPCA, is a neural network implementation.<sup>2</sup>
+
+**Which one should I use?**
+The local algorithms will be better for tightly bunched data, such as digit recogniition or GPS data. The global algorithm is better suited for "clouds" of data or sparsely represented data.
+
+
 ### What is a Principal Curve?
-A principal curve, simply put, is a smooth line that passes through the middle of a dataset. It then is a one-dimensional summary of a data.
+A principal curve, simply put, is a smooth line that passes through the middle of a dataset.
 
 ## Quick-Start
 View the quickstart notebook [here](https://github.com/artusoma/prinPy/blob/master/prinPy%20quickstart.ipynb). Docs will be coming soon!
@@ -45,3 +53,6 @@ Volume 298,
 Pages 222-235,
 ISSN 0377-0427,
 https://doi.org/10.1016/j.cam.2015.11.041.
+
+\[2\] Mark Kramer, Nonlinear Principal Component Analysis Using
+Autoassociative Neural Networks 
