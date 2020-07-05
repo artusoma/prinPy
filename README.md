@@ -1,4 +1,5 @@
 # prinPy
+Installation: `pip install prinpy`
 
 Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brings principal curves to Python. 
 
@@ -15,6 +16,21 @@ A principal curve, simply put, is a smooth line that passes through the middle o
 
 ## Quick-Start
 View the quickstart notebook [here](https://github.com/artusoma/prinPy/blob/master/prinPy%20quickstart.ipynb). Docs will be coming soon!
+
+```
+cl = CLPCG() # Create solver
+
+# CLPCG.fit() fits the principal curve. takes x_data, y_data,
+# and the min allowed error for each step. e_min is acheived 
+# through trial and error, but 1/4 to 1/2 data error is what authors
+# recommend.
+cl.fit(xdata, ydata, e_max = .1) 
+cl.plot()       # plots curve, optional axes can be passed
+
+# Reconstruct curve
+tcks = cl.spline_ticks    # get spline ticks
+xy = scipy.interpolate.splev(np.linspace(0,1,100), self.spline_ticks)
+```
 
 ## Future:
 1. Add global algorithms, and expand to 3-dimensions+
