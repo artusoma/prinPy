@@ -1,14 +1,15 @@
+'''
+These are local algorithms. These work on a per-step basis. Starting
+at one point, the algorithm attempts to choose the next best point, 
+and so on until the end is reached.
+'''
+
 # Import some modules
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as op
 import scipy.interpolate
 
-'''
-These are local algorithms. These work on a per-step basis. Starting
-at one point, the algorithm attempts to choose the next best point, 
-and so on until the end is reached.
-'''
 
 def distg(pts, v1, v2):
     '''
@@ -59,20 +60,22 @@ def proj_min(X, tck, pt):
 
 class CLPCG:
     def __init__(self):
-        fit_points = []
-        spline_ticks = None
+        self.fit_points = []
+        self.spline_ticks = None
     
     def points(self, x, y, e_max = .2, fmin_error = False):
-        '''
-        Implements CLPC-greedy algorithm
+        '''Implements CLPC-greedy algorithm. 
+
         Args:
-            x: x-data
-            y: y-data
-            e_max: Max allowed error. If not met, another point P will be added
-                to the curve. Authors suggest 1/4 to 1/2 of measurement error
+            x (array): x-data to fit
+            y (array): y-data to fit
+            e_max (flat): Max allowed error. If not met, another point P will 
+                be addedto the curve. Authors suggest 1/4 to 1/2 of 
+                measurement error. Defaults to .2
+
         Returns:   
-            points: collection of points that construct the straight line
-                    segments
+            points (array): collection of points that construct the straight 
+            line segments.
         '''
          # Combine x,y and sort
         data = np.concatenate([x.reshape(-1,1), y.reshape(-1,1)], axis = 1)
@@ -143,19 +146,25 @@ class CLPCG:
     def fit(self, x, y, e_max = .2, fmin_error = False):
         '''
         Calculates principal curve ticks
-        Args: same as fit_points
-        Returns: None
+
+        Args: same as points
+
+        Returns: 
+            None
         '''
         res = self.points(x, y, e_max, fmin_error)
         tck, u = scipy.interpolate.splprep(res.T, s = 0)
         self.spline_ticks = tck
+
         return
 
     def plot(self, ax = None):
         '''
         Plots the curve to a MPL axes object.
+
         Args:
-            ax: option set of ax to plot to 
+            ax (object): Optional set of ax to plot to. If None, a set of ax
+                will be created. 
         '''
         if ax == None:
             fig, ax = plt.subplots()
@@ -167,10 +176,10 @@ class CLPCG:
         '''
         Projects points x,y to principal curve calculated by calc_pc
         Args:
-            x: x-data to project
-            y: y-data to project
+            x (array): x-data to project
+            y (array): y-data to project
         Returns:
-            proj: projections of points onto curve between (0,1)
+            proj (array): Projecton index of points onto curve between (0,1)
         '''
         # for each point min distance to curve
         data = np.concatenate([x.reshape(-1,1), y.reshape(-1,1)], axis = 1)
@@ -212,19 +221,22 @@ def point_dist(pts, v1, v2):
 
 class CLPCS:
     def __init__(self):
-        fit_points = []
-        spline_ticks = None
+        self.fit_points = []
+        self.spline_ticks = None
     
     def points(self, x, y, e_max = .2, rl = 0):
-        '''
-        Implements CLPC one dimensional search algorithm
-        Args:
-            x: x-data
-            y: y-data
-            e_max: Max allowed error. If not met, another point P will be added
-                to the curve. Authors suggest 1/4 to 1/2 of measurement error
-        Returns:   
+        '''Implements CLPC one dimensional search algorithm
 
+        Args:
+            x (array): x-data to fit
+            y (array): y-data to fit
+            e_max (flat): Max allowed error. If not met, another point P will 
+                be addedto the curve. Authors suggest 1/4 to 1/2 of 
+                measurement error. Defaults to .2
+
+        Returns:   
+            points (array): collection of points that construct the straight 
+            line segments.
         '''
         # Combine x,y and sort
         data = np.concatenate([x.reshape(-1,1), y.reshape(-1,1)], axis = 1)
@@ -301,7 +313,9 @@ class CLPCS:
         '''
         Calculates principal curve ticks
         Args: same as fit_points
-        Returns: None
+
+        Returns: 
+            None
         '''
         res = self.points(x, y, e_max, rl)
         tck, u = scipy.interpolate.splprep(res.T, s = 0)
@@ -312,7 +326,8 @@ class CLPCS:
         '''
         Plots the curve to a MPL axes object.
         Args:
-            ax: option set of ax to plot to 
+            ax (object): Optional set of ax to plot to. If None, a 
+                set of ax will be created. 
         '''
         if ax == None:
             fig, ax = plt.subplots()
@@ -324,10 +339,10 @@ class CLPCS:
         '''
         Projects points x,y to principal curve calculated by calc_pc
         Args:
-            x: x-data to project
-            y: y-data to project
+            x (array): x-data to project
+            y (array): y-data to project
         Returns:
-            proj: projections of points onto curve between (0,1)
+            proj (array): projections of points onto curve between (0,1)
         '''
         # for each point min distance to curve
         data = np.concatenate([x.reshape(-1,1), y.reshape(-1,1)], axis = 1)
