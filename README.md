@@ -1,5 +1,6 @@
 # prinPy
 `pip install prinpy`<br>
+<br>
 Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brings principal curves to Python. 
 
 ## What prinPy does
@@ -9,7 +10,7 @@ PrinPy has local and global algorithms for computing principal curves.
 A principal curve is a smooth n-dimensional curve that passes through the middle of a dataset. Principal curves are a dimensionality reduction tool analogous to a nonlinear principal component. PCs have uses in GPS data, image recognition, bioinformatics, and so much more. 
 
 ### Local Algorithms
-Local algorithms work on a step-by-step basis. Starting at one end of the curve, it will attempt to make segments that meet an acceptable error threshold as it moves from one end of the curve to the other. Once the algorithm can connect the current point to the end point, the algorithm terminates and a curve is interpolated through the segments. 
+Local algorithms work on a step-by-step basis. Starting at one end of the curve, it will attempt to make segments that meet an acceptable error threshold as it moves from one end of the curve to the other. Once the algorithm can connect the current point to the end point, the algorithm terminates and a curve is interpolated through the segments. PrinPy currently has two local algorithms:
 
 1. CLPC-g (Greedy Constraint Local Principal Curve)<sup>1</sup>
 2. CLPC-s (One-Dimensional Search Constraint Local Principal Curve)<sup>1</sup>
@@ -28,6 +29,7 @@ The local algorithms will be better for tightly bunched data, such as digit reco
 View the quickstart notebook [here](https://github.com/artusoma/prinPy/blob/master/prinPy%20quickstart.ipynb). Docs will be coming soon!
 
 ```
+# Example of local PC fitting
 cl = CLPCG() # Create solver
 
 # CLPCG.fit() fits the principal curve. takes x_data, y_data,
@@ -41,10 +43,6 @@ cl.plot()       # plots curve, optional axes can be passed
 tcks = cl.spline_ticks    # get spline ticks
 xy = scipy.interpolate.splev(np.linspace(0,1,100), self.spline_ticks)
 ```
-
-## Future:
-1. Add global algorithms, and expand to 3-dimensions+
-2. Move some code to C++
 
 ## References
 \[1\] Dewang Chen, Jiateng Yin, Shiying Yang, Lingxi Li, Peter Pudney,
