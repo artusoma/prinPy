@@ -1,26 +1,29 @@
+`pip install prinpy`
 # prinPy
-Installation: `pip install prinpy`
 
 Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brings principal curves to Python. 
 
-### What prinPy does
-PrinPy has two local and one global algorithm.
+## What prinPy does
+PrinPy has local and global algorithms for computing principal curves. 
 
-**Local**
+## What is a Principal Curve?
+A principal curve is a smooth n-dimensional curve that passes through the middle of a dataset. Principal curves are a dimensionality reduction tool analogous to a nonlinear principal component. PCs have uses in GPS data, image recognition, bioinformatics, and so much more. 
+
+### Local Algorithms
+Local algorithms work on a step-by-step basis. Starting at one end of the curve, it will attempt to make segments that meet an acceptable error threshold as it moves from one end of the curve to the other. Once the algorithm can connect the current point to the end point, the algorithm terminates and a curve is interpolated through the segments. 
+
 1. CLPC-g (Greedy Constraint Local Principal Curve)<sup>1</sup>
 2. CLPC-s (One-Dimensional Search Constraint Local Principal Curve)<sup>1</sup>
 
 CLPC-g will be faster and is fine for simpler curves. CLPS-s has the potential to be much more accurate at the expense of speed for more difficult curves. After fitting a curve, prinPy has the ability to project to the curve.
 
-**Global** <br>
-The sole global algorithm is not necessarily a principal curve, but a nonlinear principal component analysis. However, a PC and NLPCA end up doing the same thing. The global algorithm, called NLPCA, is a neural network implementation.<sup>2</sup>
+### Global Algorithms
+Global algorithms, unlike local algorithms, are more like minimization problems. Given a dataset, a global algorithm might make an initial guess at a principal curve and adjust it from there. 
+
+The sole global algorithm as of nowperforms nonlinear principal component analysis. The global algorithm, called NLPCA in this package, is a neural network implementation.<sup>2</sup> This algorithm works by creating an autoassociative neural network with a "bottle-neck" layer which forces the network to learn the most important features of the data. 
 
 **Which one should I use?** <br>
 The local algorithms will be better for tightly bunched data, such as digit recogniition or GPS data. The global algorithm is better suited for "clouds" of data or sparsely represented data.
-
-
-### What is a Principal Curve?
-A principal curve, simply put, is a smooth line that passes through the middle of a dataset.
 
 ## Quick-Start
 View the quickstart notebook [here](https://github.com/artusoma/prinPy/blob/master/prinPy%20quickstart.ipynb). Docs will be coming soon!
