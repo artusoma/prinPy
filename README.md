@@ -1,6 +1,5 @@
-`pip install prinpy`
 # prinPy
-
+`pip install prinpy`
 Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brings principal curves to Python. 
 
 ## What prinPy does
