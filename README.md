@@ -20,7 +20,7 @@ CLPC-g will be faster and is fine for simpler curves. CLPS-s has the potential t
 ### Global Algorithms
 Global algorithms, unlike local algorithms, are more like minimization problems. Given a dataset, a global algorithm might make an initial guess at a principal curve and adjust it from there. 
 
-The sole global algorithm as of nowperforms nonlinear principal component analysis. The global algorithm, called NLPCA in this package, is a neural network implementation.<sup>2</sup> This algorithm works by creating an autoassociative neural network with a "bottle-neck" layer which forces the network to learn the most important features of the data. 
+The sole global algorithm as of now performs nonlinear principal component analysis. The global algorithm, called NLPCA in this package, is a neural network implementation.<sup>2</sup> This algorithm works by creating an autoassociative neural network with a "bottle-neck" layer which forces the network to learn the most important features of the data. 
 
 **Which one should I use?** <br>
 The local algorithms will be better for tightly bunched data, such as digit recogniition or GPS data. The global algorithm is better suited for "clouds" of data or sparsely represented data.
