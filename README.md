@@ -1,3 +1,4 @@
+[![Downloads](https://pepy.tech/badge/prinpy)](https://pepy.tech/project/prinpy)
 # prinPy
 `pip install prinpy`<br>
 <br>
