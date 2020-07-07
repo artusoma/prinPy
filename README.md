@@ -29,7 +29,7 @@ The local algorithms will be better for tightly bunched data, such as digit reco
 ## Quick-Start
 View the quickstart notebook [here](https://github.com/artusoma/prinPy/blob/master/prinPy%20quickstart.ipynb). Docs will be coming soon!
 
-```
+```python
 # Example of local PC fitting
 cl = CLPCG() # Create solver
 
