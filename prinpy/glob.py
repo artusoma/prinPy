@@ -17,7 +17,7 @@ from keras import optimizers
 import keras.backend as k
 
 # Preprocessing
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
 def orth_dist(y_true, y_pred):
@@ -40,7 +40,7 @@ class NLPCA(object):
         self.model = None
         self.intermediate_layer_model = None
 
-    def fit(self, data, epochs = 500, verbose = 0):
+    def fit(self, data, epochs = 500, nodes = 25, lr = .01, verbose = 0):
         '''This method creates a model and will fit it to the given m x n 
         dimensional data.
 
@@ -49,6 +49,10 @@ class NLPCA(object):
                 number of points and n is the number of dimensions. 
             epochs (int): Number of epochs to train neural network, defaults
                 to 500.
+            nodes (int): Number of nodes for the construction layers. Defaults
+                to 25. The more complex the curve, the higher this number
+                should be.
+            lr (float): Learning rate for backprop. Defaults to .01
             verbose (0 or 1): Verbose = 0 mutes the training text from Keras.
                 Defaults to 0.
 
@@ -58,7 +62,7 @@ class NLPCA(object):
         num_dim = data.shape[1] # get number of dimensions for pts
 
         # create models, base and intermediate
-        model = self.create_model(num_dim)
+        model = self.create_model(num_dim, nodes = nodes, lr = lr)
         bname = model.layers[2].name        # bottle-neck layer name
 
         # The itermediate model gets the output of the bottleneck layer, 
@@ -96,11 +100,13 @@ class NLPCA(object):
         
         return proj, all_sorted
 
-    def create_model(self, num_dim):
+    def create_model(self, num_dim, nodes, lr):
         '''Creates a tf model.
 
         Args:
             num_dim (int): How many dimensions the input space is
+            nodes (int): How many nodes for the construction layers
+            lr (float): Learning rate of backpropigation
 
         Returns: 
             model (object): Keras Model
@@ -108,16 +114,16 @@ class NLPCA(object):
         # Create layers:
         # Function G
         input = Input(shape = (num_dim,)) #input layer
-        mapping = Dense(20, activation = 'sigmoid')(input)   #mapping layer
+        mapping = Dense(nodes, activation = 'sigmoid')(input)   #mapping layer
         bottle = Dense(1, activation = 'sigmoid')(mapping) #bottle-neck layer
 
         # Function H
-        demapping = Dense(20, activation = 'sigmoid')(bottle)   #mapping layer
+        demapping = Dense(nodes, activation = 'sigmoid')(bottle)   #mapping layer
         output = Dense(num_dim)(demapping)   #output layer
 
         # Connect and compile model:
         model = Model(inputs = input, outputs = output)
-        gradient_descent = optimizers.adam(learning_rate=.01)
+        gradient_descent = optimizers.adam(learning_rate=lr)
         model.compile(loss = orth_dist, optimizer = gradient_descent)
 
         return model
@@ -125,7 +131,7 @@ class NLPCA(object):
     def preprocess(self, data):
         '''Converts individual arrays into a singular m x n array, where
         m is the number of observations and n is the number of dimensions.
-        Also scales the data between 0 and 1 as to not break the neural net. 
+        Normalizes the data for faster training.
 
         Args:
             data (list): List of arrays of points. For example, if you have
@@ -134,11 +140,15 @@ class NLPCA(object):
         
         Returns:
             data_comb (array): A single m x n, where each column 
-                is MinMaxScaled.
+                is MinMaxScaled and normed.
         '''
         data_lists = []
-        s = MinMaxScaler()
+
+        scale = MinMaxScaler(feature_range=(-1,1))
+        norm = StandardScaler()
         for arr in data:   
-            data_lists.append(s.fit_transform(arr.reshape(-1,1)))
+            normed = norm.fit_transform(arr.reshape(-1,1))
+            scaled = scale.fit_transform(normed.reshape(-1,1))
+            data_lists.append(scaled)
         
         return np.concatenate(data_lists, axis = 1)

@@ -5,7 +5,7 @@ with open("README.md", 'r') as f:
 
 setup(
     name = 'prinpy',
-    version = '0.0.2.2',
+    version = '0.0.3',
     license = "MIT",
     description = "A package for fitting principal curves in Python",
     author = "https://github.com/artusoma/",
@@ -17,5 +17,7 @@ setup(
     install_requires = ['numpy',
                         'matplotlib',
                         'scipy',
+                        'keras',
+                        'tensorflow',
                         ],
 )
