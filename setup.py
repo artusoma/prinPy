@@ -5,7 +5,7 @@ with open("README.md", 'r') as f:
 
 setup(
     name = 'prinpy',
-    version = '0.0.3',
+    version = '0.0.3.1',
     license = "MIT",
     description = "A package for fitting principal curves in Python",
     author = "https://github.com/artusoma/",
