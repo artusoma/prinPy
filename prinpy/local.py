@@ -322,7 +322,7 @@ class CLPCS:
         self.spline_ticks = tck
         return
 
-    def plot(self, ax = None):
+    def plot(self, ax = None, **kwargs):
         '''
         Plots the curve to a MPL axes object.
         Args:
@@ -332,7 +332,7 @@ class CLPCS:
         if ax == None:
             fig, ax = plt.subplots()
         xy = scipy.interpolate.splev(np.linspace(0,1,100), self.spline_ticks)
-        ax.plot(xy[0], xy[1], c = 'black')
+        ax.plot(xy[0], xy[1], c = 'black', **kwargs)
         return
 
     def project(self, x, y):
