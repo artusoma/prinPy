@@ -1,0 +1,17 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = 'prinpy'
+version = '1.0.0'
+license = "MIT"
+description = "A high-performance package for fitting principal curves in Python"
+authors = [{name = "Matthew Artuso", email = "artusoma1@gmail.com"}]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.20"
+]
+
+[project.optional-dependencies]
+neural = ["pytorch"]
