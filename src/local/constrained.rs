@@ -1,7 +1,7 @@
 //! Module implements constained local principal curve algorithms
 //! https://www.sciencedirect.com/science/article/pii/S0377042715005956?via%3Dihub#s000090
 
-use ndarray::{Array, Array1, Array2, ArrayRef1, ArrayRef2, Axis, Zip, s, stack};
+use ndarray::{Array1, Array2, ArrayRef1, ArrayRef2, ArrayViewMut1, ArrayViewMut2, Axis, Zip, s};
 use thiserror::Error;
 
 #[cfg(test)]
@@ -9,26 +9,123 @@ mod tests {
     use super::*;
     use ndarray::array;
 
+    // Dataset: 10 points sampled from a noisy diagonal line y ≈ x
+    // Points are 2D: [[x, y], ...]
+    fn noisy_diagonal() -> ndarray::Array2<f32> {
+        array![
+            [0.0, 0.1],
+            [1.0, 0.9],
+            [2.0, 2.1],
+            [3.0, 2.8],
+            [4.0, 4.2],
+            [5.0, 4.9],
+            [6.0, 6.1],
+            [7.0, 7.0],
+            [8.0, 7.8],
+            [9.0, 9.1]
+        ]
+    }
+
+    // Dataset: perfectly collinear horizontal points
+    fn perfect_line() -> ndarray::Array2<f32> {
+        array![
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [2.0, 0.0],
+            [3.0, 0.0],
+            [4.0, 0.0],
+            [5.0, 0.0]
+        ]
+    }
+
+    /// The iterator must always yield the first data point on its first call.
     #[test]
-    fn test_constrained_iterator_step_by_step() {
-        // Create a simple line of points: (0,0), (1,0), (2,0), (3,0)
-        let data = array![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
-        let data_ref = data.view();
+    fn test_first_point_is_always_yielded() {
+        let data = noisy_diagonal();
+        let mut iter = ConstrainedFitIterator::new(&data.view(), 0.5, GreedyFitter::default());
 
-        // Tolerance high enough to accept the next point easily
-        let mut iterator = ConstrainedFitIterator::new(&data_ref, 1.0, GreedyFitter::default());
+        let first = iter
+            .next()
+            .expect("iterator must not be empty")
+            .expect("first point must be Ok");
+        assert_eq!(
+            first,
+            data.row(0).to_owned(),
+            "first yielded point must equal data[0]"
+        );
+    }
 
-        println!("Starting iteration...");
+    /// On a perfectly collinear dataset, all points lie exactly on the segment
+    /// from the first to the last point. The error check should fire immediately,
+    /// so the iterator should yield exactly [first, last].
+    #[test]
+    fn test_perfect_line_yields_first_and_last() {
+        let data = perfect_line();
+        let iter = ConstrainedFitIterator::new(&data.view(), 0.01, GreedyFitter::default());
 
-        // Check first point
-        if let Some(result) = iterator.next() {
-            match result {
-                Ok(point) => println!("First candidate point: {:?}", point),
-                Err(e) => panic!("First iteration failed with error: {:?}", e),
-            }
-        } else {
-            panic!("Iterator returned None immediately");
-        }
+        let points: Vec<_> = iter
+            .collect::<Result<Vec<_>, _>>()
+            .expect("no errors expected");
+
+        assert_eq!(
+            points.len(),
+            2,
+            "a perfect line should produce exactly 2 vertices"
+        );
+        assert_eq!(points[0], data.row(0).to_owned());
+        assert_eq!(points[1], data.row(data.nrows() - 1).to_owned());
+    }
+
+    /// partition_on_distance must move all points with distance <= radius to the
+    /// right side of the array, returning the split index where inside points begin.
+    #[test]
+    fn test_partition_on_distance() {
+        // 5 points; we don't care about their coordinates, only their distances
+        let mut data = array![
+            [0.0, 0.0], // dist 0.5 — inside
+            [1.0, 0.0], // dist 2.0 — outside
+            [2.0, 0.0], // dist 0.3 — inside
+            [3.0, 0.0], // dist 1.5 — outside
+            [4.0, 0.0]  // dist 0.8 — inside
+        ];
+        let mut distances = array![0.5_f32, 2.0, 0.3, 1.5, 0.8];
+        let radius = 1.0_f32;
+
+        let split = partition_on_distance(radius, &mut data.view_mut(), &mut distances.view_mut());
+
+        // [0..split] must all be outside, [split..] must all be inside
+        let outside = distances.slice(s![..split]);
+        let inside = distances.slice(s![split..]);
+
+        assert!(
+            outside.iter().all(|&d| d > radius),
+            "all outside points must have dist > radius"
+        );
+        assert!(
+            inside.iter().all(|&d| d <= radius),
+            "all inside points must have dist <= radius"
+        );
+        assert_eq!(outside.len() + inside.len(), 5);
+        assert_eq!(inside.len(), 3, "3 points are within radius");
+    }
+
+    /// The iterator must terminate (return None) after all points are consumed.
+    #[test]
+    fn test_iterator_terminates() {
+        let data = noisy_diagonal();
+        let iter = ConstrainedFitIterator::new(&data.view(), 0.5, GreedyFitter::default());
+
+        // Collecting must complete without hanging or panicking
+        let points: Vec<_> = iter
+            .collect::<Result<Vec<_>, _>>()
+            .expect("no errors expected");
+
+        assert!(!points.is_empty());
+        assert_eq!(*points.first().unwrap(), data.row(0).to_owned());
+        assert_eq!(
+            *points.last().unwrap(),
+            data.row(data.nrows() - 1).to_owned()
+        );
     }
 }
 
@@ -47,14 +144,17 @@ fn get_distance_to_point(
     v2: &ArrayRef1<f32>,
 ) -> Array1<f32> {
     let l = Zip::from(v1).and(v2).map_collect(|v1, v2| v2 - v1);
-    let mut distances = Array1::<f32>::zeros(data.nrows());
-    Zip::from(&mut distances)
-        .and(data.rows())
-        .for_each(|dist, pt| {
-            let p1 = Zip::from(pt).and(v1).map_collect(|a, b| a - b);
-            *dist = (p1.dot(&p1) - (p1.dot(&l)).powf(2f32) / (l.dot(&l))).sqrt();
-        });
-    distances
+    let l_dot_l = l.dot(&l);
+    Zip::from(data.rows()).map_collect(|pt| {
+        let (dot_pp, dot_pl) = pt.iter().zip(v1.iter()).zip(l.iter()).fold(
+            (0f32, 0f32),
+            |(dot1, dot2), ((ptv, v1v), lv)| {
+                let d = ptv - v1v;
+                (dot1 + d * d, dot2 + d * lv)
+            },
+        );
+        (dot_pp - dot_pl * dot_pl / l_dot_l).sqrt()
+    })
 }
 
 /// Trait that performs step 4 in 3.1
@@ -85,7 +185,7 @@ impl Fitter for GreedyFitter {
         dist: &ArrayRef1<f32>,
         radius: f32,
     ) -> Result<Array1<f32>, ConstrainedFitError> {
-        let inner_radius = self.slice_width * radius;
+        let inner_radius = (self.slice_width * radius).powi(2);
         let indices: Vec<usize> = (0..dist.len())
             .filter(|&idx| dist[idx] > inner_radius)
             .collect();
@@ -113,33 +213,33 @@ pub enum ConstrainedFitError {
     NoPointsInRadius,
 }
 
-pub struct ConstrainedFitIterator<'a, F: Fitter> {
+pub struct ConstrainedFitIterator<F: Fitter> {
     /// Data to fit
-    data: &'a ArrayRef2<f32>,
+    data: Array2<f32>,
     /// Algorithm to compute next point
     fitter: F,
     /// Max tolerable error before shrinking local search
     max_error: f32,
     /// Remaining points in data that are not fit yet.
-    remaining: Vec<bool>,
+    remaining: usize,
     /// Previous vertex to build from
-    prev_vertex: Array1<f32>,
+    current_vertex: Array1<f32>,
     /// Final vertex to connect to
     final_vertex: Array1<f32>,
     /// If we just started; used to return the initial vertex
     initializing: bool,
 }
 
-impl<'a, F: Fitter> std::iter::Iterator for ConstrainedFitIterator<'a, F> {
+impl<F: Fitter> std::iter::Iterator for ConstrainedFitIterator<F> {
     type Item = Result<Array1<f32>, ConstrainedFitError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.initializing {
             self.initializing = false;
-            return Some(Ok(self.prev_vertex.clone()));
+            return Some(Ok(self.current_vertex.clone()));
         }
 
-        if !self.remaining.iter().any(|&r| r) {
+        if self.remaining == 0 {
             return None;
         }
 
@@ -147,54 +247,83 @@ impl<'a, F: Fitter> std::iter::Iterator for ConstrainedFitIterator<'a, F> {
     }
 }
 
-impl<'a, F: Fitter> ConstrainedFitIterator<'a, F> {
-    fn calc_error(
-        &self,
-        data: &ArrayRef2<f32>,
-        v1: &ArrayRef1<f32>,
-        v2: &ArrayRef1<f32>,
-    ) -> Result<f32, ConstrainedFitError> {
-        get_distance_to_point(data, v1, v2)
-            .mean()
-            .ok_or(ConstrainedFitError::GenericError)
+fn partition_on_distance(
+    radius: f32,
+    data: &mut ArrayViewMut2<f32>,
+    distances: &mut ArrayViewMut1<f32>,
+) -> usize {
+    // Walk data. Partition data and distances into two sections:
+    // 0..in = inside radius
+    // in..end = inside radius (will drop on success)
+    let mut write_idx: usize = data.nrows() - 1;
+    for read_idx in (0..data.nrows()).rev() {
+        // If read  is in the radius, swap with write
+        if distances[read_idx] <= radius {
+            // Check to avoid double mutable borrow
+            if read_idx != write_idx {
+                // Swap from data
+                let (mut x, mut y) = data.multi_slice_mut((s![read_idx, ..], s![write_idx, ..]));
+                x.iter_mut()
+                    .zip(y.iter_mut())
+                    .for_each(|(a, b)| std::mem::swap(a, b));
+
+                // Swap from distances
+                let (mut x, mut y) = distances.multi_slice_mut((s![read_idx], s![write_idx]));
+                x.iter_mut()
+                    .zip(y.iter_mut())
+                    .for_each(|(a, b)| std::mem::swap(a, b));
+            }
+            write_idx -= 1;
+        }
     }
+    write_idx + 1
+}
+
+fn calc_error(
+    data: &ArrayRef2<f32>,
+    v1: &ArrayRef1<f32>,
+    v2: &ArrayRef1<f32>,
+) -> Result<f32, ConstrainedFitError> {
+    get_distance_to_point(data, v1, v2)
+        .mean()
+        .ok_or(ConstrainedFitError::GenericError)
+}
+
+impl<F: Fitter> ConstrainedFitIterator<F> {
+    ///
 
     fn get_next_vertex(&mut self) -> Result<Array1<f32>, ConstrainedFitError> {
-        let mut radius: f32 = distance(&self.prev_vertex, &self.final_vertex) / 2.;
+        let mut radius: f32 = distance(&self.current_vertex, &self.final_vertex) / 2.;
+
+        let mut data_ref = self.data.slice_mut(s![0..self.remaining, ..]);
 
         // Check if we can complete right to end
-        let d2 = (0..self.data.nrows())
-            .filter(|i| self.remaining[*i])
-            .collect::<Vec<usize>>();
-        if self.calc_error(
-            &self.data.select(Axis(0), &d2),
-            &self.prev_vertex,
-            &self.final_vertex,
-        )? <= self.max_error
-        {
-            self.remaining.iter_mut().for_each(|b| *b = false);
-            self.prev_vertex = self.final_vertex.clone();
+        if calc_error(&data_ref, &self.current_vertex, &self.final_vertex)? <= self.max_error {
+            self.remaining = 0;
+            self.current_vertex = self.final_vertex.clone();
             return Ok(self.final_vertex.clone());
         }
 
-        // Get distances from previuos vertex to each remaining point in data
-        let distances = self
-            .data
+        // Get distances from vertex to
+        let mut distances = data_ref
             .rows()
             .into_iter()
-            .map(|p| distance(&p, &self.prev_vertex))
+            .map(|p| {
+                p.iter()
+                    .zip(self.current_vertex.iter())
+                    .fold(0f32, |a, (b, c)| a + (c - b).powf(2.))
+            })
             .collect::<Array1<f32>>();
 
         loop {
-            let in_radius = distances
-                .iter()
-                .zip(self.remaining.iter())
-                .map(|(&d, &r)| (d <= radius) && r)
-                .collect::<Vec<bool>>();
-            let in_idxs: Vec<usize> = (0..distances.len()).filter(|&i| in_radius[i]).collect();
+            let outside_circle = partition_on_distance(
+                radius.powi(2),
+                &mut data_ref,
+                &mut distances.slice_mut(s![..]),
+            );
 
-            let in_circle = self.data.select(Axis(0), &in_idxs);
-            let in_distances = distances.select(Axis(0), &in_idxs);
+            let in_circle = data_ref.slice(s![outside_circle..data_ref.nrows(), ..]);
+            let in_distances = distances.slice(s![outside_circle..data_ref.nrows()]);
 
             if in_circle.nrows() == 0 {
                 return Err(ConstrainedFitError::NoPointsInRadius);
@@ -204,36 +333,28 @@ impl<'a, F: Fitter> ConstrainedFitIterator<'a, F> {
             let candidate_point = self.fitter.fit_segment(&in_circle, &in_distances, radius)?;
 
             // Project found points in radius from segment from Pi to Pi+1, getting local error Ei
-            let error = self.calc_error(&in_circle, &self.prev_vertex, &candidate_point)?;
+            let error = calc_error(&in_circle, &self.current_vertex, &candidate_point)?;
 
             // If Ei <= Emax, discard used points and break with candidate
             if error <= self.max_error {
-                self.remaining
-                    .iter_mut()
-                    .zip(in_radius.iter())
-                    .for_each(|(x, &b)| {
-                        if b {
-                            *x = false
-                        }
-                    });
-                self.prev_vertex = candidate_point.clone();
+                self.remaining = outside_circle;
+                self.current_vertex = candidate_point.to_owned();
                 break Ok(candidate_point);
             }
             radius /= 2.;
         }
     }
 
-    pub fn new(data: &'a ArrayRef2<f32>, max_error: f32, fitter: F) -> Self {
-        let prev_vertex = data.row(0).to_owned();
+    pub fn new(data: &ArrayRef2<f32>, max_error: f32, fitter: F) -> Self {
+        let current_vertex = data.row(0).to_owned();
         let final_vertex = data.row(data.nrows() - 1).to_owned();
-        let mut remaining: Vec<bool> = (0..data.nrows()).map(|_| true).collect();
-        remaining[0] = false;
+        let remaining: usize = data.nrows();
         Self {
-            data,
+            data: data.to_owned(),
             fitter,
             max_error,
             remaining,
-            prev_vertex,
+            current_vertex,
             final_vertex,
             initializing: true,
         }

@@ -22,7 +22,7 @@ start = timeit.default_timer()
 
 # cl.fit(x_data, y_data, e_max = .03)  # CLPCG.fit() to fit PC
 data = np.array([x_data, y_data], dtype=np.float32).T
-res = clpg(data, .05)
+res = clpg(data, .1)
 
 stop = timeit.default_timer()
 
