@@ -3,26 +3,31 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class Projections:
-    arc_lengths: np.ndarray[np.float64]
-    points: np.ndarray[np.float64]
+class Projection:
+    arc_lengths: np.ndarray
+    unit_lengths: np.ndarray
+    points: np.ndarray
+
 
 class ICurve:
-    def project(self, /, X: np.ndarray[np.float64]) -> Projections:
+    def project(self, X: np.ndarray) -> Projection:
         raise NotImplementedError("Subclasses must implement this method")
-    
-    def interpolate(self, /, X: np.ndarray[np.float64]) -> Projections:
+
+    def interpolate_from_length(self, X: np.ndarray) -> Projection:
         raise NotImplementedError("Subclasses must implement this method")
-    
+
+    def interpolate_from_unit(self, X: np.ndarray) -> Projection:
+        raise NotImplementedError("Subclasses must implement this method")
+
     def get_length(self) -> float:
         raise NotImplementedError("Subclasses must implement this method")
-    
 
-class ICurveCalculator:
-    def fit(self, data: np.ndarray[np.float64]) -> ICurve:
+
+class ICurveFitter:
+    def fit(self, data: np.ndarray) -> ICurve:
         raise NotImplementedError("Subclasses must implement this method")
 
-    def update(self, data: np.ndarray[np.float64]) -> ICurve:
+    def update(self, data: np.ndarray) -> ICurve:
         """Most curve calculators will not need to implement this method, but it is here
         for neural network based curve calculators that may want to update the model with new data.
         By default, this method will raise a NotImplementedError"""

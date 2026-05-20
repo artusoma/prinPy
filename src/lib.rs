@@ -1,5 +1,6 @@
 pub mod global;
 pub mod local;
+pub mod utilities;
 
 use pyo3::prelude::*;
 #[pymodule]

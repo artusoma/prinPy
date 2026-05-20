@@ -1,6 +1,7 @@
 //! Module implements constained local principal curve algorithms
 //! https://www.sciencedirect.com/science/article/pii/S0377042715005956?via%3Dihub#s000090
 
+use crate::utilities::squared_distance;
 use ndarray::{Array1, Array2, ArrayRef1, ArrayRef2, ArrayViewMut1, ArrayViewMut2, Axis, Zip, s};
 use thiserror::Error;
 
@@ -129,15 +130,6 @@ mod tests {
     }
 }
 
-fn distance(p1: &ArrayRef1<f32>, p2: &ArrayRef1<f32>) -> f32 {
-    let diff = p1 - p2;
-    diff.dot(&diff).sqrt()
-}
-
-/// Gets distance from each data point in data to the line
-/// formed between vertices v1 and v2
-///
-/// For each point, takes the minimum
 fn get_distance_to_point(
     data: &ArrayRef2<f32>,
     v1: &ArrayRef1<f32>,
@@ -163,11 +155,12 @@ pub trait Fitter {
     fn fit_segment(
         &self,
         data: &ArrayRef2<f32>,
-        dist: &ArrayRef1<f32>,
-        radius: f32,
+        sq_distances: &ArrayRef1<f32>,
+        sq_radius: f32,
     ) -> Result<Array1<f32>, ConstrainedFitError>;
 }
 
+#[derive(Debug)]
 pub struct GreedyFitter {
     slice_width: f32,
 }
@@ -185,7 +178,7 @@ impl Fitter for GreedyFitter {
         dist: &ArrayRef1<f32>,
         radius: f32,
     ) -> Result<Array1<f32>, ConstrainedFitError> {
-        let inner_radius = (self.slice_width * radius).powi(2);
+        let inner_radius = (self.slice_width * radius.sqrt()).powi(2);
         let indices: Vec<usize> = (0..dist.len())
             .filter(|&idx| dist[idx] > inner_radius)
             .collect();
@@ -194,25 +187,37 @@ impl Fitter for GreedyFitter {
             // FALLBACK: If no points are in the outer shell, just take the mean of all points in the circle
             return data
                 .mean_axis(Axis(0))
-                .ok_or(ConstrainedFitError::GenericError);
+                .ok_or(ConstrainedFitError::EmptySliceError);
         }
 
         let in_manifold = data.select(Axis(0), &indices);
         in_manifold
             .mean_axis(Axis(0))
-            .ok_or(ConstrainedFitError::GenericError)
+            .ok_or(ConstrainedFitError::EmptySliceError)
     }
 }
 
 /// Error type
 #[derive(Error, Debug)]
 pub enum ConstrainedFitError {
-    #[error("No points in fitter")]
-    GenericError,
-    #[error("No points in radius")]
+    #[error("No points were found in computational area.")]
+    EmptySliceError,
+    #[error("No points in found in radius. Please increase errortolerance")]
     NoPointsInRadius,
 }
 
+/// Iterator that yields the vertices of a constrained local principal curve fit.
+///
+/// Implements the algorithm from Kégl et al. (2015), section 3.1. Starting from the first
+/// data point, each call to [`next`] finds the next best-fit vertex by:
+/// 1. Collecting all points within a search radius of the current vertex.
+/// 2. Delegating to a [`Fitter`] to find the candidate next vertex.
+/// 3. Checking that the mean perpendicular error of points in the radius is within `max_error`.
+/// 4. Halving the radius and retrying if the error check fails.
+///
+/// The first item yielded is always the first data point. The last item yielded is always
+/// the last data point. Points are consumed and discarded as they are covered by a segment.
+#[derive(Debug)]
 pub struct ConstrainedFitIterator<F: Fitter> {
     /// Data to fit
     data: Array2<f32>,
@@ -247,6 +252,11 @@ impl<F: Fitter> std::iter::Iterator for ConstrainedFitIterator<F> {
     }
 }
 
+/// Partitions `data` and `distances` in-place so that points outside `radius` occupy
+/// `0..split` and points inside occupy `split..len`, returning the split index.
+///
+/// Both slices are reordered identically, so `distances[i]` always corresponds to `data[i]`.
+/// The relative order within each partition is not preserved.
 fn partition_on_distance(
     radius: f32,
     data: &mut ArrayViewMut2<f32>,
@@ -286,62 +296,66 @@ fn calc_error(
 ) -> Result<f32, ConstrainedFitError> {
     get_distance_to_point(data, v1, v2)
         .mean()
-        .ok_or(ConstrainedFitError::GenericError)
+        .ok_or(ConstrainedFitError::EmptySliceError)
 }
 
 impl<F: Fitter> ConstrainedFitIterator<F> {
+    /// Advances the iterator by computing the next principal curve vertex.
     ///
-
+    /// Starting from `current_vertex`, the search radius is initialised to the squared distance
+    /// to `final_vertex`. The algorithm then loops:
+    ///
+    /// 1. Partitions the remaining data into points inside and outside the radius.
+    /// 2. Calls [`Fitter::fit_segment`] on the inside points to get a candidate vertex.
+    /// 3. Computes the mean perpendicular error of inside points to the segment
+    ///    `current_vertex → candidate`.
+    /// 4. If `error <= max_error`, accepts the candidate: discards covered points,
+    ///    updates `current_vertex`, and returns `Ok(candidate)`.
+    /// 5. Otherwise halves the squared radius and retries.
+    ///
+    /// Returns [`ConstrainedFitError::NoPointsInRadius`] if the radius shrinks until
+    /// no points remain inside it.
     fn get_next_vertex(&mut self) -> Result<Array1<f32>, ConstrainedFitError> {
-        let mut radius: f32 = distance(&self.current_vertex, &self.final_vertex) / 2.;
+        let mut sq_radius: f32 = squared_distance(&self.current_vertex, &self.final_vertex);
 
         let mut data_ref = self.data.slice_mut(s![0..self.remaining, ..]);
 
-        // Check if we can complete right to end
-        if calc_error(&data_ref, &self.current_vertex, &self.final_vertex)? <= self.max_error {
-            self.remaining = 0;
-            self.current_vertex = self.final_vertex.clone();
-            return Ok(self.final_vertex.clone());
-        }
-
         // Get distances from vertex to
-        let mut distances = data_ref
+        let mut sq_distances = data_ref
             .rows()
             .into_iter()
-            .map(|p| {
-                p.iter()
-                    .zip(self.current_vertex.iter())
-                    .fold(0f32, |a, (b, c)| a + (c - b).powf(2.))
-            })
+            .map(|p| squared_distance(&p, &self.current_vertex))
             .collect::<Array1<f32>>();
 
         loop {
-            let outside_circle = partition_on_distance(
-                radius.powi(2),
+            let cnt_out = partition_on_distance(
+                sq_radius,
                 &mut data_ref,
-                &mut distances.slice_mut(s![..]),
+                &mut sq_distances.slice_mut(s![..]),
             );
 
-            let in_circle = data_ref.slice(s![outside_circle..data_ref.nrows(), ..]);
-            let in_distances = distances.slice(s![outside_circle..data_ref.nrows()]);
+            let in_circle = data_ref.slice(s![cnt_out..data_ref.nrows(), ..]);
+            let in_distances = sq_distances.slice(s![cnt_out..data_ref.nrows()]);
 
             if in_circle.nrows() == 0 {
                 return Err(ConstrainedFitError::NoPointsInRadius);
             }
 
             // Use fitter to find new segment
-            let candidate_point = self.fitter.fit_segment(&in_circle, &in_distances, radius)?;
+            let candidate_point = self
+                .fitter
+                .fit_segment(&in_circle, &in_distances, sq_radius)?;
 
             // Project found points in radius from segment from Pi to Pi+1, getting local error Ei
             let error = calc_error(&in_circle, &self.current_vertex, &candidate_point)?;
 
             // If Ei <= Emax, discard used points and break with candidate
             if error <= self.max_error {
-                self.remaining = outside_circle;
+                self.remaining = cnt_out;
                 self.current_vertex = candidate_point.to_owned();
                 break Ok(candidate_point);
             }
-            radius /= 2.;
+            sq_radius /= 2.;
         }
     }
 
