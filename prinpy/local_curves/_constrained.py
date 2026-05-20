@@ -29,7 +29,7 @@ class GreedyFit(FitAlgorithm):
     Attributes:
         inner_radius (float): The inner radius parameter for the greedy fit algorithm.
     """
-    inner_radius: float
+    inner_radius: float = .9
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,7 @@ class SearchFit(FitAlgorithm):
     Attributes:
         trials (int): The number of candidate points to evaluate for the next vertex.
     """
-    trials: int = 10
+    trials: int = 20
 
 
 class ConstrainedFitter(ICurveFitter):
