@@ -1,6 +1,8 @@
 import numpy as np
 import timeit
 
+from prinpy.local_curves import ConstrainedFitter, GreedyFit, SVDFit
+
 def distg_fast(pts, v1, v2):
     """Fully vectorized distance metric calculation."""
     if pts.shape[0] == 0:
@@ -189,13 +191,28 @@ if __name__ == "__main__":
 
     # Test Rust Implementation
     try:
-        from prinpy_rs import clpg
         # Rust expects float32
-        data_f32 = data.astype(np.float32)
         start = timeit.default_timer()
-        res_rust = clpg(data_f32, 0.05)
+        algorithm = GreedyFit(inner_radius=0.9)
+        # algorithm = SVDFit()
+        fitter = ConstrainedFitter(algorithm=algorithm, tolerance=0.05)
+        res_rust = fitter.fit(data)
         stop = timeit.default_timer()
-        print(f"Rust Extension: {stop - start:.4f} seconds ({len(res_rust)} points)")
+        print(f"Rust Extension: {stop - start:.4f} seconds ({len(res_rust.get_control_points())} points)")
+
+        # plot points
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        ax.scatter(x_data, y_data, s=3, alpha=0.7, label="Data")
+        ax.scatter(res_orig[:, 0], res_orig[:, 1], s=40, c='green', label="Original Python")
+        ax.scatter(res_fast[:, 0], res_fast[:, 1], s=40, c='orange', label="Optimized Python")
+        ax.scatter(res_rust.get_control_points()[:, 0], res_rust.get_control_points()[:, 1], s=40, c='red', label="Rust Extension")
+        curve_pts = res_rust.interpolate_from_unit(np.linspace(0, 1, 100)).points
+        ax.plot(curve_pts[:, 0], curve_pts[:, 1], c='red', label="Rust Curve")
+        ax.legend()
+        fig.show()
+        input("Press Enter to continue...")
+
     except ImportError:
         print("Rust Extension (prinpy_rs) could not be imported. Did you run 'maturin develop'?")
     except Exception as e:

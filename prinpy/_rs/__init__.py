@@ -1,3 +1,7 @@
-from .prinpy_rs import clpg, clps, find_nearest_points
+"""
+Python entry point into compiled prinpy Rust binaries
+"""
 
-__all__ = ["clpg", "clps", "find_nearest_points"]
+from .prinpy_rs import clpg, clppca, find_nearest_points
+
+__all__ = ["clpg", "clppca" , "find_nearest_points"]

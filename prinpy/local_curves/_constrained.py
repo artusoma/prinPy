@@ -1,10 +1,10 @@
 """
-This file implements algorithms from 
+This file implements algorithms from
 https://www.sciencedirect.com/science/article/pii/S0377042715005956
 """
 
 from prinpy.interfaces import ICurveFitter, ICurve, Projection
-from prinpy._rs import clpg, clps
+from prinpy._rs import clpg, clppca
 from prinpy.containers import SplineCurve
 import numpy as np
 from dataclasses import dataclass
@@ -25,11 +25,9 @@ class GreedyFit(FitAlgorithm):
 
     Args:
         inner_radius (float): The inner radius parameter for the greedy fit algorithm.
-
-    Attributes:
-        inner_radius (float): The inner radius parameter for the greedy fit algorithm.
     """
-    inner_radius: float = .9
+
+    inner_radius: float = 0.9
 
 
 @dataclass(frozen=True)
@@ -42,10 +40,19 @@ class SearchFit(FitAlgorithm):
 
     Args:
         trials (int): The number of candidate points to evaluate for the next vertex.
-    Attributes:
-        trials (int): The number of candidate points to evaluate for the next vertex.
     """
+
     trials: int = 20
+
+
+@dataclass(frozen=True)
+class SVDFit(FitAlgorithm):
+    """
+    SVDFit class for fitting
+    curves using Singular Value Decomposition (SVD).
+    """
+
+    pass
 
 
 class ConstrainedFitter(ICurveFitter):
@@ -72,24 +79,19 @@ class ConstrainedFitter(ICurveFitter):
     Args:
         algorithm (FitAlgorithm): The algorithm to use for fitting the curve.
         tolerance (float): The tolerance for the fitting algorithm.
-
-    Attributes:
-        algorithm (FitAlgorithm): The algorithm to use for fitting the curve.
-        tolerance (float): The tolerance for the fitting algorithm.
     """
+
     def __init__(self, algorithm: FitAlgorithm, tolerance: float = 1e-3):
         self._algorithm = algorithm
         self._tolerance = tolerance
 
-    def fit(self, data: np.ndarray) -> ICurve:
+    def fit(self, data: np.ndarray) -> SplineCurve:
         data = np.ascontiguousarray(data, dtype=np.float32)
         match self._algorithm:
             case GreedyFit(inner_radius=inner_radius):
-                fit_points = clpg(data, self._tolerance)
-            case SearchFit(trials=trials):
-                raise NotImplementedError("SearchFit algorithm is not yet implemented")
-                fit_points = clps(data, self._tolerance)
+                fit_points = clpg(data, self._tolerance, inner_radius)
+            case SVDFit():
+                fit_points = clppca(data, self._tolerance)
             case _:
                 raise ValueError(f"Unsupported algorithm: {self._algorithm}")
         return SplineCurve(fit_points)
-    

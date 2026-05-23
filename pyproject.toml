@@ -15,3 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 neural = ["pytorch"]
+
+[tool.maturin]
+module-name = "prinpy._rs.prinpy_rs"
+python-source = "."

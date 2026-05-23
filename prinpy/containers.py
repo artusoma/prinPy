@@ -9,6 +9,10 @@ class SplineCurve(ICurve):
     def __init__(self, control_points: np.ndarray):
         self._spline = si.make_splprep(control_points.T, s=0)[0]
         self._arc_length = self._calculate_arc_length()
+        self._control_points = control_points
+
+    def get_control_points(self) -> np.ndarray:
+        return self._control_points
 
     def project(self, X: np.ndarray, sample_resolution: int = 500) -> Projection:
         samples = np.linspace(0, 1, sample_resolution)

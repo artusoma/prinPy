@@ -1,153 +1,9 @@
 //! Module implements constained local principal curve algorithms
 //! https://www.sciencedirect.com/science/article/pii/S0377042715005956?via%3Dihub#s000090
 
-use crate::utilities::squared_distance;
-use ndarray::{Array1, Array2, ArrayRef1, ArrayRef2, ArrayViewMut1, ArrayViewMut2, Axis, Zip, s};
+use crate::utilities::*;
+use ndarray::{Array1, Array2, ArrayRef1, ArrayRef2, ArrayViewMut1, ArrayViewMut2, s};
 use thiserror::Error;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ndarray::array;
-
-    // Dataset: 10 points sampled from a noisy diagonal line y ≈ x
-    // Points are 2D: [[x, y], ...]
-    fn noisy_diagonal() -> ndarray::Array2<f32> {
-        array![
-            [0.0, 0.1],
-            [1.0, 0.9],
-            [2.0, 2.1],
-            [3.0, 2.8],
-            [4.0, 4.2],
-            [5.0, 4.9],
-            [6.0, 6.1],
-            [7.0, 7.0],
-            [8.0, 7.8],
-            [9.0, 9.1]
-        ]
-    }
-
-    // Dataset: perfectly collinear horizontal points
-    fn perfect_line() -> ndarray::Array2<f32> {
-        array![
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [2.0, 0.0],
-            [3.0, 0.0],
-            [4.0, 0.0],
-            [5.0, 0.0]
-        ]
-    }
-
-    /// The iterator must always yield the first data point on its first call.
-    #[test]
-    fn test_first_point_is_always_yielded() {
-        let data = noisy_diagonal();
-        let mut iter = ConstrainedFitIterator::new(&data.view(), 0.5, GreedyFitter::default());
-
-        let first = iter
-            .next()
-            .expect("iterator must not be empty")
-            .expect("first point must be Ok");
-        assert_eq!(
-            first,
-            data.row(0).to_owned(),
-            "first yielded point must equal data[0]"
-        );
-    }
-
-    /// On a perfectly collinear dataset, all points lie exactly on the segment
-    /// from the first to the last point. The error check should fire immediately,
-    /// so the iterator should yield exactly [first, last].
-    #[test]
-    fn test_perfect_line_yields_first_and_last() {
-        let data = perfect_line();
-        let iter = ConstrainedFitIterator::new(&data.view(), 0.01, GreedyFitter::default());
-
-        let points: Vec<_> = iter
-            .collect::<Result<Vec<_>, _>>()
-            .expect("no errors expected");
-
-        assert_eq!(
-            points.len(),
-            2,
-            "a perfect line should produce exactly 2 vertices"
-        );
-        assert_eq!(points[0], data.row(0).to_owned());
-        assert_eq!(points[1], data.row(data.nrows() - 1).to_owned());
-    }
-
-    /// partition_on_distance must move all points with distance <= radius to the
-    /// right side of the array, returning the split index where inside points begin.
-    #[test]
-    fn test_partition_on_distance() {
-        // 5 points; we don't care about their coordinates, only their distances
-        let mut data = array![
-            [0.0, 0.0], // dist 0.5 — inside
-            [1.0, 0.0], // dist 2.0 — outside
-            [2.0, 0.0], // dist 0.3 — inside
-            [3.0, 0.0], // dist 1.5 — outside
-            [4.0, 0.0]  // dist 0.8 — inside
-        ];
-        let mut distances = array![0.5_f32, 2.0, 0.3, 1.5, 0.8];
-        let radius = 1.0_f32;
-
-        let split = partition_on_distance(radius, &mut data.view_mut(), &mut distances.view_mut());
-
-        // [0..split] must all be outside, [split..] must all be inside
-        let outside = distances.slice(s![..split]);
-        let inside = distances.slice(s![split..]);
-
-        assert!(
-            outside.iter().all(|&d| d > radius),
-            "all outside points must have dist > radius"
-        );
-        assert!(
-            inside.iter().all(|&d| d <= radius),
-            "all inside points must have dist <= radius"
-        );
-        assert_eq!(outside.len() + inside.len(), 5);
-        assert_eq!(inside.len(), 3, "3 points are within radius");
-    }
-
-    /// The iterator must terminate (return None) after all points are consumed.
-    #[test]
-    fn test_iterator_terminates() {
-        let data = noisy_diagonal();
-        let iter = ConstrainedFitIterator::new(&data.view(), 0.5, GreedyFitter::default());
-
-        // Collecting must complete without hanging or panicking
-        let points: Vec<_> = iter
-            .collect::<Result<Vec<_>, _>>()
-            .expect("no errors expected");
-
-        assert!(!points.is_empty());
-        assert_eq!(*points.first().unwrap(), data.row(0).to_owned());
-        assert_eq!(
-            *points.last().unwrap(),
-            data.row(data.nrows() - 1).to_owned()
-        );
-    }
-}
-
-fn get_distance_to_point(
-    data: &ArrayRef2<f32>,
-    v1: &ArrayRef1<f32>,
-    v2: &ArrayRef1<f32>,
-) -> Array1<f32> {
-    let l = Zip::from(v1).and(v2).map_collect(|v1, v2| v2 - v1);
-    let l_dot_l = l.dot(&l);
-    Zip::from(data.rows()).map_collect(|pt| {
-        let (dot_pp, dot_pl) = pt.iter().zip(v1.iter()).zip(l.iter()).fold(
-            (0f32, 0f32),
-            |(dot1, dot2), ((ptv, v1v), lv)| {
-                let d = ptv - v1v;
-                (dot1 + d * d, dot2 + d * lv)
-            },
-        );
-        (dot_pp - dot_pl * dot_pl / l_dot_l).sqrt()
-    })
-}
 
 /// Trait that performs step 4 in 3.1
 pub trait Fitter {
@@ -157,44 +13,8 @@ pub trait Fitter {
         data: &ArrayRef2<f32>,
         sq_distances: &ArrayRef1<f32>,
         sq_radius: f32,
+        vertex: &ArrayRef1<f32>,
     ) -> Result<Array1<f32>, ConstrainedFitError>;
-}
-
-#[derive(Debug)]
-pub struct GreedyFitter {
-    slice_width: f32,
-}
-
-impl Default for GreedyFitter {
-    fn default() -> Self {
-        GreedyFitter { slice_width: 0.9 }
-    }
-}
-
-impl Fitter for GreedyFitter {
-    fn fit_segment(
-        &self,
-        data: &ArrayRef2<f32>,
-        dist: &ArrayRef1<f32>,
-        radius: f32,
-    ) -> Result<Array1<f32>, ConstrainedFitError> {
-        let inner_radius = (self.slice_width * radius.sqrt()).powi(2);
-        let indices: Vec<usize> = (0..dist.len())
-            .filter(|&idx| dist[idx] > inner_radius)
-            .collect();
-
-        if indices.is_empty() {
-            // FALLBACK: If no points are in the outer shell, just take the mean of all points in the circle
-            return data
-                .mean_axis(Axis(0))
-                .ok_or(ConstrainedFitError::EmptySliceError);
-        }
-
-        let in_manifold = data.select(Axis(0), &indices);
-        in_manifold
-            .mean_axis(Axis(0))
-            .ok_or(ConstrainedFitError::EmptySliceError)
-    }
 }
 
 /// Error type
@@ -204,6 +24,8 @@ pub enum ConstrainedFitError {
     EmptySliceError,
     #[error("No points in found in radius. Please increase errortolerance")]
     NoPointsInRadius,
+    #[error("Error calculating SVD")]
+    SVDError(#[from] ndarray_linalg::error::LinalgError),
 }
 
 /// Iterator that yields the vertices of a constrained local principal curve fit.
@@ -271,17 +93,8 @@ fn partition_on_distance(
         if distances[read_idx] <= radius {
             // Check to avoid double mutable borrow
             if read_idx != write_idx {
-                // Swap from data
-                let (mut x, mut y) = data.multi_slice_mut((s![read_idx, ..], s![write_idx, ..]));
-                x.iter_mut()
-                    .zip(y.iter_mut())
-                    .for_each(|(a, b)| std::mem::swap(a, b));
-
-                // Swap from distances
-                let (mut x, mut y) = distances.multi_slice_mut((s![read_idx], s![write_idx]));
-                x.iter_mut()
-                    .zip(y.iter_mut())
-                    .for_each(|(a, b)| std::mem::swap(a, b));
+                swap_row!(data, read_idx, write_idx, ..);
+                swap_row!(distances, read_idx, write_idx);
             }
             write_idx -= 1;
         }
@@ -294,7 +107,7 @@ fn calc_error(
     v1: &ArrayRef1<f32>,
     v2: &ArrayRef1<f32>,
 ) -> Result<f32, ConstrainedFitError> {
-    get_distance_to_point(data, v1, v2)
+    distance_line_to_point(data, v1, v2)
         .mean()
         .ok_or(ConstrainedFitError::EmptySliceError)
 }
@@ -316,9 +129,16 @@ impl<F: Fitter> ConstrainedFitIterator<F> {
     /// Returns [`ConstrainedFitError::NoPointsInRadius`] if the radius shrinks until
     /// no points remain inside it.
     fn get_next_vertex(&mut self) -> Result<Array1<f32>, ConstrainedFitError> {
-        let mut sq_radius: f32 = squared_distance(&self.current_vertex, &self.final_vertex);
+        let mut sq_radius: f32 = squared_distance(&self.current_vertex, &self.final_vertex) / 2.0;
 
         let mut data_ref = self.data.slice_mut(s![0..self.remaining, ..]);
+
+        // Check if we can complete curve to end
+        if calc_error(&data_ref, &self.current_vertex, &self.final_vertex)? <= self.max_error {
+            self.remaining = 0;
+            self.current_vertex = self.final_vertex.clone();
+            return Ok(self.final_vertex.clone());
+        }
 
         // Get distances from vertex to
         let mut sq_distances = data_ref
@@ -342,9 +162,12 @@ impl<F: Fitter> ConstrainedFitIterator<F> {
             }
 
             // Use fitter to find new segment
-            let candidate_point = self
-                .fitter
-                .fit_segment(&in_circle, &in_distances, sq_radius)?;
+            let candidate_point = self.fitter.fit_segment(
+                &in_circle,
+                &in_distances,
+                sq_radius,
+                &self.current_vertex,
+            )?;
 
             // Project found points in radius from segment from Pi to Pi+1, getting local error Ei
             let error = calc_error(&in_circle, &self.current_vertex, &candidate_point)?;

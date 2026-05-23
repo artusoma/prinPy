@@ -1,8 +1,18 @@
 [![Downloads](https://pepy.tech/badge/prinpy)](https://pepy.tech/project/prinpy)
 # prinPy
-`pip install prinpy`<br>
+Install with `pip install prinpy`.
+<br>
 <br>
 Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brings principal curves to Python. 
+
+## prinPy Version v1.0.0 is Here! 🎉
+**v1.0.0 introduces breaking changes and is not backwards-compatible.**
+<br>
+<br>
+Key changes:
+- Code is refactored to be more modular and maintainable. The local algorithms are now in `prinpy/local_curves` and global algorithms are in `prinpy/global_curves`.
+- Key algorithms and functions and are now implemented in Rust for speed. The Rust code is in `prinpy/_rs` and is accessed through Python bindings. For example, the CLPC-g algorithm now runs ~70x faster than the previous Python implementation.
+- The API is more consistent and easier to use. For example, the `fit` method now takes in a single 2D array of data instead than separate x and y arrays. The `project` method is now implemented for all curves, not just local curves. Methods now accept arrays in N-dimensional space, not just 2D.
 
 ## What prinPy does
 PrinPy has local and global algorithms for computing principal curves. 
@@ -25,25 +35,6 @@ The sole global algorithm as of now performs nonlinear principal component analy
 
 **Which one should I use?** <br>
 The local algorithms will be better for tightly bunched data, such as digit recogniition or GPS data. The global algorithm is better suited for "clouds" of data or sparsely represented data.
-
-## Quick-Start
-View the quickstart notebook [here](https://github.com/artusoma/prinPy/blob/master/prinPy%20quickstart.ipynb). Docs will be coming soon!
-
-```python
-# Example of local PC fitting
-cl = CLPCG() # Create solver
-
-# CLPCG.fit() fits the principal curve. takes x_data, y_data,
-# and the min allowed error for each step. e_min is acheived 
-# through trial and error, but 1/4 to 1/2 data error is what authors
-# recommend.
-cl.fit(xdata, ydata, e_max = .1) 
-cl.plot()       # plots curve, optional axes can be passed
-
-# Reconstruct curve
-tcks = cl.spline_ticks    # get spline ticks
-xy = scipy.interpolate.splev(np.linspace(0,1,100), self.spline_ticks)
-```
 
 ## References
 \[1\] Dewang Chen, Jiateng Yin, Shiying Yang, Lingxi Li, Peter Pudney,
