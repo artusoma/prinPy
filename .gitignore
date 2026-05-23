@@ -6,3 +6,5 @@ dist/
 prinpy.egg-info/
 venv/
 target/
+prinpy/_rs/*.pyd
+prinpy/_rs/*.pdb
