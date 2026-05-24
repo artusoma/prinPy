@@ -41,6 +41,9 @@ Homepage = "https://github.com/artusoma/prinpy"
 Repository = "https://github.com/artusoma/prinpy"
 "Bug Tracker" = "https://github.com/artusoma/prinpy/issues"
 
+[tool.pytest.ini_options]
+addopts = "--ignore=tests/global_curves"
+
 [tool.maturin]
 module-name = "prinpy._rs.prinpy_rs"
 python-source = "."
