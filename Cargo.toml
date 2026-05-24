@@ -1,0 +1,14 @@
+[package]
+name = "prinpy_rs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "prinpy_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+ndarray = "0.17"
+pyo3 = "0.28.3"
+numpy = "0.28"
+thiserror = "1.0"

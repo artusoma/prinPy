@@ -4,3 +4,9 @@ __pycache__/
 build/
 dist/
 prinpy.egg-info/
+venv/
+target/
+prinpy/_rs/*.pyd
+prinpy/_rs/*.pdb
+.mypy_cache/
+.pytest_cache/
