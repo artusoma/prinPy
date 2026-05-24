@@ -25,6 +25,15 @@ jobs:
       - name: Create virtualenv
         run: python -m venv .venv
 
+      - name: Add venv to PATH
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            echo "$GITHUB_WORKSPACE/.venv/Scripts" >> $GITHUB_PATH
+          else
+            echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          fi
+        shell: bash
+
       - name: Build and install (dev mode)
         uses: PyO3/maturin-action@v1
         env:
@@ -34,9 +43,7 @@ jobs:
           args: --release
 
       - name: Install test dependencies
-        run: .venv/bin/pip install pytest
-        shell: bash
+        run: pip install pytest
 
       - name: Run tests
-        run: .venv/bin/pytest tests/
-        shell: bash
+        run: pytest tests/
