@@ -22,14 +22,21 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Create virtualenv
+        run: python -m venv .venv
+
       - name: Build and install (dev mode)
         uses: PyO3/maturin-action@v1
+        env:
+          VIRTUAL_ENV: ${{ github.workspace }}/.venv
         with:
           command: develop
           args: --release
 
       - name: Install test dependencies
-        run: pip install pytest
+        run: .venv/bin/pip install pytest
+        shell: bash
 
       - name: Run tests
-        run: pytest tests/
+        run: .venv/bin/pytest tests/
+        shell: bash
