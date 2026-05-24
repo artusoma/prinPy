@@ -1,18 +1,20 @@
 [![Downloads](https://pepy.tech/badge/prinpy)](https://pepy.tech/project/prinpy)
 # prinPy
-Install with `pip install prinpy`.
+`pip install prinpy`
 <br>
 <br>
 Inspired by [this R package](https://github.com/rcannood/princurve), prinPy brings principal curves to Python. 
 
-## prinPy Version v1.0.0 is Here! 🎉
+## prinPy version v1.0.0 is here! 🎉
 **v1.0.0 introduces breaking changes and is not backwards-compatible.**
 <br>
 <br>
 Key changes:
-- Code is refactored to be more modular and maintainable. The local algorithms are now in `prinpy/local_curves` and global algorithms are in `prinpy/global_curves`.
-- Key algorithms and functions and are now implemented in Rust for speed. The Rust code is in `prinpy/_rs` and is accessed through Python bindings. For example, the CLPC-g algorithm now runs ~70x faster than the previous Python implementation.
-- The API is more consistent and easier to use. For example, the `fit` method now takes in a single 2D array of data instead than separate x and y arrays. The `project` method is now implemented for all curves, not just local curves. Methods now accept arrays in N-dimensional space, not just 2D.
+- Codebase has been refactored to be more modular and maintainable. 
+- Key algorithms and functions are now implemented in Rust for speed: the CLPC-g algorithm now runs ~70x faster than the previous Python implementation.
+- The API is more consistent and easier to use. All principal curve algorithms are produced by an `ICurveFitter`  and return a standard `ICurve` interface for projecting and interpolating.
+- PyTorch is now used instead of Keras / TF, and is included with the optional `Neural` flag.
+- The constained search algorithm has been replaced by a more efficient version that uses truncated SVD to find the optimal segment direction instead of searching over $\theta$.
 
 ## What prinPy does
 PrinPy has local and global algorithms for computing principal curves. 

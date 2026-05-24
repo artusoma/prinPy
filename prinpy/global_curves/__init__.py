@@ -1,3 +1,3 @@
-from ._network import NetworkCurve, NetworkFitter, TrainingCallback
+from ._network import _NetworkCurve, NetworkFitter, TrainingCallback
 
-__all__ = ["NetworkCurve", "NetworkFitter", "TrainingCallback"]
+__all__ = ["_NetworkCurve", "NetworkFitter", "TrainingCallback"]

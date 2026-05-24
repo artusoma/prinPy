@@ -3,9 +3,10 @@ This file implements algorithms from
 https://www.sciencedirect.com/science/article/pii/S0377042715005956
 """
 
-from prinpy.interfaces import ICurveFitter, ICurve, Projection
+from prinpy.interfaces import CurveFitter, PrincipalCurve, Projection
 from prinpy._rs import clpg, clppca
-from prinpy.containers import SplineCurve
+from prinpy._containers import _SplineCurve, _SegmentCurve
+from prinpy._utils import _check_shape
 import numpy as np
 from dataclasses import dataclass
 
@@ -55,7 +56,7 @@ class SVDFit(FitAlgorithm):
     pass
 
 
-class ConstrainedFitter(ICurveFitter):
+class ConstrainedFitter(CurveFitter):
     """
     ConstrainedFitter class for fitting curves with constraints.
 
@@ -85,7 +86,8 @@ class ConstrainedFitter(ICurveFitter):
         self._algorithm = algorithm
         self._tolerance = tolerance
 
-    def fit(self, data: np.ndarray) -> SplineCurve:
+    @_check_shape(2)
+    def fit(self, data: np.ndarray) -> PrincipalCurve:
         data = np.ascontiguousarray(data, dtype=np.float32)
         match self._algorithm:
             case GreedyFit(inner_radius=inner_radius):
@@ -94,4 +96,7 @@ class ConstrainedFitter(ICurveFitter):
                 fit_points = clppca(data, self._tolerance)
             case _:
                 raise ValueError(f"Unsupported algorithm: {self._algorithm}")
-        return SplineCurve(fit_points)
+            
+        if fit_points.shape[0] < 4:
+            return _SegmentCurve(fit_points)
+        return _SplineCurve(fit_points)
