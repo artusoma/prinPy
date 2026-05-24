@@ -20,40 +20,41 @@ if TYPE_CHECKING:
     from torch import nn
 
 
-class _OrthogonalLoss(nn.Module):
-    def __init__(self):
-        super(_OrthogonalLoss, self).__init__()
+if _TORCH_AVAILABLE:
+    class _OrthogonalLoss(nn.Module):
+        def __init__(self):
+            super(_OrthogonalLoss, self).__init__()
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        # Compute the orthogonal loss as the mean squared distance from inputs to targets
-        return torch.mean(torch.norm(inputs - targets, dim=1))
+        def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+            # Compute the orthogonal loss as the mean squared distance from inputs to targets
+            return torch.mean(torch.norm(inputs - targets, dim=1))
 
 
-class _NetworkCurveModel(nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int):
-        super(_NetworkCurveModel, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, 1),
-        )
-        self.decoder = nn.Sequential(
-            nn.Linear(1, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, input_dim),
-        )
+    class _NetworkCurveModel(nn.Module):
+        def __init__(self, input_dim: int, hidden_dim: int):
+            super(_NetworkCurveModel, self).__init__()
+            self.encoder = nn.Sequential(
+                nn.Linear(input_dim, hidden_dim),
+                nn.Tanh(),
+                nn.Linear(hidden_dim, 1),
+            )
+            self.decoder = nn.Sequential(
+                nn.Linear(1, hidden_dim),
+                nn.Tanh(),
+                nn.Linear(hidden_dim, input_dim),
+            )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Returns projection of x onto the curve."""
-        return self.decoder(self.encoder(x))
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            """Returns projection of x onto the curve."""
+            return self.decoder(self.encoder(x))
 
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
-        """Returns the projection layer output, which is the arc length."""
-        return self.encoder(x)
+        def encode(self, x: torch.Tensor) -> torch.Tensor:
+            """Returns the projection layer output, which is the arc length."""
+            return self.encoder(x)
 
-    def decode(self, arc_length: torch.Tensor) -> torch.Tensor:
-        """Returns the point on the curve corresponding to the given arc length."""
-        return self.decoder(arc_length)
+        def decode(self, arc_length: torch.Tensor) -> torch.Tensor:
+            """Returns the point on the curve corresponding to the given arc length."""
+            return self.decoder(arc_length)
 
 
 class _NetworkCurve(PrincipalCurve):
@@ -68,7 +69,7 @@ class _NetworkCurve(PrincipalCurve):
             projection of the point on the curve that is farthest from the data.
     """
 
-    def __init__(self, model: _NetworkCurveModel, min_arc: float, max_arc: float):
+    def __init__(self, model: "_NetworkCurveModel", min_arc: float, max_arc: float):
         self._model = model
         self._min_arc = min_arc
         self._max_arc = max_arc
@@ -190,7 +191,7 @@ class NetworkFitter(CurveFitter):
         return _NetworkCurve(self._model, min_arc, max_arc)
 
     def _find_arc_length(
-        self, model: _NetworkCurveModel, data: np.ndarray
+        self, model: "_NetworkCurveModel", data: np.ndarray
     ) -> Tuple[float, float]:
         """Find arc length. Run the data through and get the min and max of the projection layer."""
         with torch.no_grad():
