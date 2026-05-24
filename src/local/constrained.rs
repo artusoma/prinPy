@@ -24,8 +24,6 @@ pub enum ConstrainedFitError {
     EmptySliceError,
     #[error("No points in found in radius. Please increase error tolerance.")]
     NoPointsInRadius,
-    #[error("Error calculating SVD")]
-    SVDError(#[from] ndarray_linalg::error::LinalgError),
 }
 
 /// Iterator that yields the vertices of a constrained local principal curve fit.

@@ -1,8 +1,8 @@
 use super::constrained::{ConstrainedFitError, Fitter};
+use crate::utilities::compute_pc1;
 use ndarray::{Array1, ArrayRef1, ArrayRef2, Axis};
-use ndarray_linalg::{TruncatedOrder, TruncatedSvd};
 
-/// Greedy fitter uses a narrow width around the edge of the circle to compute the 
+/// Greedy fitter uses a narrow width around the edge of the circle to compute the
 /// mean, using that as the next vertex
 #[derive(Debug)]
 pub struct GreedyFitter {
@@ -17,7 +17,7 @@ impl Default for GreedyFitter {
 
 impl GreedyFitter {
     pub fn new(slice_width: f32) -> Self {
-        Self {slice_width}
+        Self { slice_width }
     }
 }
 
@@ -35,7 +35,7 @@ impl Fitter for GreedyFitter {
             .collect();
 
         if indices.is_empty() {
-            // FALLBACK: If no points are in the outer shell, just take the mean of all points 
+            // FALLBACK: If no points are in the outer shell, just take the mean of all points
             // in the circle
             return data
                 .mean_axis(Axis(0))
@@ -70,16 +70,10 @@ impl Fitter for SVDFitter {
     ) -> Result<Array1<f32>, ConstrainedFitError> {
         // Center data to vertex.
         // Unwrap because this should not fail.
-        let centered = data - vertex.to_shape((1, vertex.len())).unwrap();
-
-        // Perform SVD, returning Vt; grab first row (first eigenvector)
-        let vt = TruncatedSvd::new(centered.to_owned(), TruncatedOrder::Largest)
-            .decompose(1)?
-            .values_vectors()
-            .2;
+        let centered = data - vertex.to_shape((1, vertex.len())).unwrap().to_owned();
 
         // PC1 is a unit vector. Scale by R and add back centering
-        let mut direction = vt.row(0).to_owned();
+        let mut direction = compute_pc1(&centered);
 
         // Check if the direction vector points with or against the average data trend.
         // We can dot product our direction with the sum of all centered points.

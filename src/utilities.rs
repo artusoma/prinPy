@@ -1,7 +1,7 @@
 //! General utilities
 
-use ndarray::prelude::*;
 use ndarray::Zip;
+use ndarray::prelude::*;
 
 /// swap_row! swaps elements in `array` between `row_a` and `row_b`
 #[macro_export]
@@ -71,4 +71,34 @@ pub fn find_nearest_candidates(data: &ArrayRef2<f32>, candidates: &ArrayRef2<f32
         .into_iter()
         .map(|row| get_best_candidate(&row, &candidates))
         .collect::<Vec<usize>>()
+}
+
+pub fn compute_pc1(data: &Array2<f32>) -> Array1<f32> {
+    let b = data.t().dot(data);
+    let ncols = data.ncols();
+
+    let mut v: Array1<f32> = Array1::from_elem(ncols, 1.0);
+    let norm = v.dot(&v).sqrt(); 
+    v.mapv_inplace(|x| x / norm); // Idiomatic in-place division
+
+    let mut prev_v = v.clone();
+
+    for _ in 0..50 {
+        let mut v_new = b.dot(&v);
+
+        let norm = v_new.dot(&v_new).sqrt();
+        v_new.mapv_inplace(|x| x / norm);
+
+        let dot_product = v_new.dot(&prev_v).abs();
+        if 1.0 - dot_product < 1e-6 {
+            v = v_new;
+            break;
+        }
+
+        // Update vectors for the next iteration
+        prev_v = v_new.clone();
+        v = v_new;
+    }
+
+    v
 }

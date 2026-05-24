@@ -12,4 +12,3 @@ ndarray = "0.17"
 pyo3 = "0.28.3"
 numpy = "0.28"
 thiserror = "1.0"
-ndarray-linalg = { version = "0.18", features = ["intel-mkl-static"] }
