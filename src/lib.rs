@@ -31,7 +31,6 @@ mod prinpy_rs {
         let iterator =
             ConstrainedFitIterator::new(&array_view, tol, GreedyFitter::new(inner_radius));
 
-        // Use ? to propagate errors directly to Python
         let fit_points: Vec<Array1<f32>> = iterator
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| to_pyerr!(e))?;
@@ -53,17 +52,14 @@ mod prinpy_rs {
         let array_view = x.as_array();
         let iterator = ConstrainedFitIterator::new(&array_view, tol, SVDFitter::default());
 
-        // Use ? to propagate errors directly to Python
-        let fit_points: Vec<Array1<f32>> =
-            iterator.collect::<Result<Vec<_>, _>>().map_err(|e| {
-                // This string becomes the exception message in Python
-                PyRuntimeError::new_err(format!("Rust ConstrainedFit error: {:?}", e))
-            })?;
+        let fit_points: Vec<Array1<f32>> = iterator
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| to_pyerr!(e))?;
 
         let view_points: Vec<_> = fit_points.iter().map(|v| v.view()).collect();
 
-        let result_array = ndarray::stack(ndarray::Axis(0), &view_points)
-            .map_err(|e| PyRuntimeError::new_err(format!("Failed to stack results: {}", e)))?;
+        let result_array =
+            ndarray::stack(ndarray::Axis(0), &view_points).map_err(|e| to_pyerr!(e))?;
 
         Ok(PyArray2::from_array(py, &result_array))
     }
