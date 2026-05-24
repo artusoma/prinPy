@@ -22,7 +22,7 @@ pub trait Fitter {
 pub enum ConstrainedFitError {
     #[error("No points were found in computational area.")]
     EmptySliceError,
-    #[error("No points in found in radius. Please increase errortolerance")]
+    #[error("No points in found in radius. Please increase error tolerance.")]
     NoPointsInRadius,
     #[error("Error calculating SVD")]
     SVDError(#[from] ndarray_linalg::error::LinalgError),
